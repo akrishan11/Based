@@ -1,5 +1,8 @@
 import nltk
 import re
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from bertopic import BERTopic
 
 # Ensure that you have the necessary NLTK resources
 nltk.download('punkt')
@@ -66,46 +69,74 @@ def parse_markdown(md_text):
     
     return blocks
 
-def tokenize_blocks(blocks):
-    tokenized_blocks = []
+def get_block_texts(blocks):
+    # Extract block content as strings (heading + content) with proper markdown structure
+    block_texts = []
     for block in blocks:
-        # Tokenize the content of each block
-        block_tokens = []
+        block_text = block['heading'] + "\n"
         for item in block['content']:
-            tokens = nltk.word_tokenize(item['content'])
-            block_tokens.append({
-                'tokens': tokens,
-                'indent_level': item['indent_level']
-            })
-        tokenized_blocks.append({
-            'heading': block['heading'],
-            'level': block['level'],
-            'tokens': block_tokens
-        })
-    return tokenized_blocks
+            # Indent the content based on the indent level
+            indent = ' ' * (item['indent_level'] * 2)  # 2 spaces per indentation level
+            block_text += f"{indent}- {item['content']}\n"
+        block_texts.append(block_text)  # Append as a structured markdown block
+    return block_texts
 
 def read_markdown_file(file_path):
     """Reads a markdown file and returns its content as a string."""
     with open(file_path, 'r', encoding='utf-8') as file:
         return file.read()
 
+def process_files(file_paths):
+    """Process multiple markdown files, tokenize and vectorize them."""
+    all_block_texts = []
+    for file_path in file_paths:
+        markdown_text = read_markdown_file(file_path)
+        blocks = parse_markdown(markdown_text)
+        block_texts = get_block_texts(blocks)
+        all_block_texts.extend(block_texts)
+    
+    return all_block_texts
+
+def fit_bertopic_on_blocks(block_texts):
+    """Fit BERTopic to the tokenized blocks and return topics."""
+    sentence_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # Use pre-trained model for sentence embeddings
+    embeddings = sentence_model.encode(block_texts, convert_to_tensor=True)
+    embeddings = embeddings.cpu().numpy()  # Convert to NumPy array
+    
+    topic_model = BERTopic(min_topic_size=2)  # Set min_topic_size to 2 to avoid small clusters
+    topics, probs = topic_model.fit_transform(block_texts, embeddings=embeddings)
+    
+    return topic_model, topics, probs
+
+def combine_topics_and_generate_markdown(file_paths):
+    """Combine topics and generate a combined markdown file."""
+    # Step 1: Process files and tokenize
+    block_texts = process_files(file_paths)
+    
+    # Step 2: Fit BERTopic on the tokenized blocks
+    topic_model, topics, probs = fit_bertopic_on_blocks(block_texts)
+    
+    # Step 3: Combine topics from both files
+    combined_markdown = ""
+    for topic_idx in set(topics):  # Loop over all unique topics
+        combined_markdown += f"# Topic {topic_idx}\n"
+        
+        # Get the block content for the current topic
+        topic_content = [block_texts[i] for i in range(len(block_texts)) if topics[i] == topic_idx]
+        
+        # Append the content for the current topic
+        combined_markdown += "\n".join(topic_content) + "\n\n"
+    
+    return combined_markdown
+
 # Example usage:
-file_path = './based_samples/Lecture 9 Andrew Chen.md'  # Replace with your markdown file path
+file_paths = ['./based_samples/Lecture 2.md', './based_samples/Lecture 2 Andrew Chen.md']  # Replace with your markdown file paths
 
-# Read markdown content from the file
-markdown_text = read_markdown_file(file_path)
+# Generate combined markdown content based on matching topics
+combined_markdown = combine_topics_and_generate_markdown(file_paths)
 
-# Parse and tokenize the markdown content
-blocks = parse_markdown(markdown_text)
-tokenized_blocks = tokenize_blocks(blocks)
+# Optionally, write the combined markdown content to a new file
+with open('combined_output.md', 'w', encoding='utf-8') as f:
+    f.write(combined_markdown)
 
-
-#print(tokenized_blocks[3])
-# Print the tokenized blocks with indentation level
-for block in tokenized_blocks:
-    print(f"Heading: {block['heading']}")
-    print(f"Level: {block['level']}")
-    for item in block['tokens']:
-        print(f"Indentation Level: {item['indent_level']}")
-        print(f"Tokens: {item['tokens']}")
-    print()
+print("Combined markdown file has been generated!")

@@ -18,15 +18,15 @@
 - Scheduling refers to the CPU picking amongst the set of ready processes to run
 
 ## Process Life Cycle
-1. A process forks itself, creating a new process
-2. This new process is loaded into memory and is ready to be ran
-3. The CPU schedules the new process to be ran
-4. The CPU runs it for a bit, switches, then runs it again
-5. The process may be blocking itself
-6. Eventually, the new process finishes execution
-7. The process called exit, a system call to the CPU that comes from the software
-    1. The CPU frees up all memory used by the process
-    2. The scheduler removes the process from the linked list of processes to run
+- A process forks itself, creating a new process
+- This new process is loaded into memory and is ready to be ran
+- The CPU schedules the new process to be ran
+- The CPU runs it for a bit, switches, then runs it again
+- The process may be blocking itself
+- Eventually, the new process finishes execution
+- The process called exit, a system call to the CPU that comes from the software
+    - The CPU frees up all memory used by the process
+    - The scheduler removes the process from the linked list of processes to run
 
 ## Exception
 - By using exceptions in Java and other languages, we can separate the handling of error's by different components of the computer
@@ -63,6 +63,6 @@
 	- Thus, there must be a hardware interrupt that kicks the running process back to ready
 		- Must be done without the OS's help
 	- Two ways to achieve this:
-		1. Cooperative: Have every program periodically make a system call (Yield)  
+		- Cooperative: Have every program periodically make a system call (Yield)  
 		    - Called cooperative systems, must play nice with each other
-		2. Competitive: A hardware timer that makes an interrupt when the time is reached
+		- Competitive: A hardware timer that makes an interrupt when the time is reached
