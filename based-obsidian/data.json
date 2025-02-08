@@ -1,4 +1,6 @@
 {
   "joinCode": "123456",
-  "serverUrl": "https://based.schmul.dev/submitText"
+  "serverUrl": "https://based.shmul.dev/joinVault",
+  "isAuthenticated": true,
+  "lastSyncTimestamp": 1739046834235
 }

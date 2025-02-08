@@ -1,0 +1,7 @@
+- [[Reading_notes]]
+- [[Docs_notes]]
+- [[Textbook_notes]]
+	- [Chapter 1](obsidian://open?vault=hack-vault&file=Chapter_1)
+	- [Chapter_2](obsidian://open?vault=hack-vault&file=Chapter_2)
+	- [Chapter_3](obsidian://open?vault=hack-vault&file=Chapter_3)
+	- [Chapter_4](obsidian://open?vault=hack-vault&file=Chapter_4)
