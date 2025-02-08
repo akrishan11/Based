@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "based-obsidian",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "An obsidian plugin that allows your vault to act as a collaborative hub.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
