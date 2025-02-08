@@ -60,7 +60,7 @@ export default class BasedPlugin extends Plugin {
 			"Sync Vault",
 			(evt: MouseEvent) => {
 				if (this.settings.isAuthenticated) {
-					this.syncVault();
+					this.performFullSync();
 				} else {
 					new Notice("Please join the vault first!");
 				}
@@ -75,13 +75,12 @@ export default class BasedPlugin extends Plugin {
 				if (!this.settings.isAuthenticated) {
 					new JoinCodeModal(this.app, this).open();
 				} else {
-					this.syncVault();
+					this.performFullSync();
 				}
 			},
 			editorCallback: (editor: Editor) => {
 				if (this.settings.isAuthenticated) {
-					const mdContent = editor.getDoc().getValue();
-					this.syncVault(mdContent);
+					this.performFullSync();
 				} else {
 					new Notice("Please join the vault first!");
 					new JoinCodeModal(this.app, this).open();
@@ -89,7 +88,6 @@ export default class BasedPlugin extends Plugin {
 			},
 		});
 
-		// Add settings tab
 		this.addSettingTab(new SyncSettingTab(this.app, this));
 	}
 
@@ -101,19 +99,14 @@ export default class BasedPlugin extends Plugin {
 			.replace(/[\\/:#*?"<>|]/g, "_")
 			.replace(/\s+/g, "_");
 		try {
-			// Generate filePath
 			const filePath = `${sanitizedName}.md`;
-
-			// Create file content with frontmatter
 			const content = `---
 username: ${noteData.username}
 location: ${noteData.location_tag}
 ---\n\n${noteData.text_content}`;
 
-			// Force create new file (overwrite if exists)
 			await this.app.vault.create(filePath, content);
-
-			new Notice(`Created: ${filePath}`);
+			new Notice(`Created/Updated: ${filePath}`);
 		} catch (err) {
 			new Notice(`FAILED to create ${sanitizedName}: ${err.message}`);
 			console.error("File creation error:", err);
@@ -128,26 +121,46 @@ location: ${noteData.location_tag}
 
 		try {
 			const response = await axios.get(this.settings.serverUrl, {
-				headers: { Authorization: `Bearer ${this.settings.joinCode}` },
+				headers: {
+					Authorization: `Bearer ${this.settings.joinCode}`,
+					"Content-Type": "application/text",
+				},
 			});
 
-			console.log("Raw Response:", response.data);
-
-			if (response.data) {
-				this.settings.lastSyncTimestamp = Date.now();
-				await this.saveSettings();
-				new Notice("Successfully fetched vault data");
-				return response.data;
+			if (!response.data) {
+				throw new Error("No data received from server");
 			}
 
-			console.log(
-				"Extracted notes:",
-				Object.keys(response?.data?.data || {})
-			);
-
+			new Notice("Successfully fetched vault data");
 			return response.data;
 		} catch (error) {
 			console.error("Error fetching vault data:", error);
+			throw error;
+		}
+	}
+
+	async sendVaultData(frontmatterData: any[]) {
+		const submitUrl = this.settings.serverUrl.replace(
+			"/joinVault",
+			"/submitText"
+		);
+
+		try {
+			const response = await axios.post(submitUrl, frontmatterData, {
+				headers: {
+					Authorization: `Bearer ${this.settings.joinCode}`,
+					"Content-Type": "application/text",
+				},
+			});
+
+			if (!response.data) {
+				throw new Error("No confirmation received from server");
+			}
+
+			new Notice("Successfully sent vault data to server");
+			return response.data;
+		} catch (error) {
+			console.error("Error sending vault data:", error);
 			throw error;
 		}
 	}
@@ -191,7 +204,7 @@ location: ${noteData.location_tag}
 		return frontmatterArray;
 	}
 
-	async syncVault(mdContent?: string) {
+	async performFullSync() {
 		if (!this.settings.isAuthenticated) {
 			new Notice("Please join the vault first!");
 			return;
@@ -199,12 +212,12 @@ location: ${noteData.location_tag}
 
 		try {
 			// First fetch updates from server
-			const responseData = await this.fetchVaultData();
+			new Notice("Fetching updates from server...");
+			const serverData = await this.fetchVaultData();
 
-			if (responseData) {
-				for (const [noteKey, noteData] of Object.entries(
-					responseData
-				)) {
+			// Update local files with server data
+			if (serverData) {
+				for (const [noteKey, noteData] of Object.entries(serverData)) {
 					await this.createOrUpdateNote(
 						noteKey,
 						noteData as NoteData
@@ -212,24 +225,19 @@ location: ${noteData.location_tag}
 				}
 			}
 
-			// Then send local frontmatter data back to server
+			// Get local frontmatter data
+			new Notice("Preparing local changes...");
 			const frontmatterData = await this.getAllFrontmatter();
 
-			// Send the frontmatter data to the server
-			const submitUrl = this.settings.serverUrl.replace(
-				"/joinVault",
-				"/submitText"
-			);
+			// Send local changes to server
+			new Notice("Sending local changes to server...");
+			await this.sendVaultData(frontmatterData);
 
-			await axios.post(submitUrl, frontmatterData, {
-				headers: {
-					"Content-Type": "application/text",
-				},
-			});
-
+			// Update sync timestamp
 			this.settings.lastSyncTimestamp = Date.now();
 			await this.saveSettings();
-			new Notice("Sync completed successfully!");
+
+			new Notice("Full sync completed successfully!");
 		} catch (error) {
 			new Notice(`Sync failed: ${error.message}`);
 			console.error("Sync error:", error);
@@ -238,29 +246,22 @@ location: ${noteData.location_tag}
 
 	async joinVault(joinCode: string) {
 		try {
-			// pretend status === 200
+			// Set credentials first
 			this.settings.joinCode = joinCode;
 			this.settings.isAuthenticated = true;
-			this.settings.lastSyncTimestamp = Date.now();
 			await this.saveSettings();
 
-			const response = await this.fetchVaultData();
-			if (response?.data) {
-				for (const [noteKey, noteData] of Object.entries(
-					response.data
-				)) {
-					await this.createOrUpdateNote(
-						noteKey,
-						noteData as NoteData
-					);
-				}
-			}
+			// Perform initial sync
+			new Notice("Joining vault and performing initial sync...");
+			await this.performFullSync();
 
-			new Notice("Join completed successfully!");
+			new Notice("Successfully joined vault and completed initial sync!");
 		} catch (error) {
 			this.settings.isAuthenticated = false;
+			this.settings.joinCode = "";
 			await this.saveSettings();
-			new Notice(`Join failed! ${error}`);
+			new Notice(`Failed to join vault: ${error.message}`);
+			throw error;
 		}
 	}
 
