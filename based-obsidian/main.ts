@@ -105,10 +105,9 @@ export default class BasedPlugin extends Plugin {
 
 			// Create file content with frontmatter
 			const content = `---
-	  username: ${noteData.username}
-	  location: ${noteData.location_tag}
-	  inline_tags: [${noteData.inline_tags.join(", ")}]
-	  ---\n\n ${noteData.text_content}`;
+username: ${noteData.username}
+location: ${noteData.location_tag}
+---\n\n${noteData.text_content}`;
 
 			// Force create new file (overwrite if exists)
 			await this.app.vault.create(filePath, content);
@@ -128,13 +127,10 @@ export default class BasedPlugin extends Plugin {
 
 		try {
 			const response = await axios.get(this.settings.serverUrl, {
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${this.settings.joinCode}`,
-				},
+				headers: { Authorization: `Bearer ${this.settings.joinCode}` },
 			});
 
-			console.log("Raw server response:", response);
+			console.log("Raw Response:", response.data);
 
 			if (response.data) {
 				this.settings.lastSyncTimestamp = Date.now();
@@ -148,7 +144,7 @@ export default class BasedPlugin extends Plugin {
 				Object.keys(response?.data?.data || {})
 			);
 
-			return undefined;
+			return response.data;
 		} catch (error) {
 			console.error("Error fetching vault data:", error);
 			throw error;
@@ -161,29 +157,18 @@ export default class BasedPlugin extends Plugin {
 			return;
 		}
 		try {
-			if (mdContent) {
-				await axios.post(this.settings.serverUrl, mdContent, {
-					headers: {
-						"Content-Type": "text/plain",
-						Authorization: `Bearer ${this.settings.joinCode}`,
-					},
-				});
+			const responseData = await this.fetchVaultData();
+
+			if (responseData) {
+				for (const [noteKey, noteData] of Object.entries(
+					responseData
+				)) {
+					await this.createOrUpdateNote(
+						noteKey,
+						noteData as NoteData
+					);
+				}
 			}
-			// Fetch updated data
-			const response = await this.fetchVaultData();
-			if (response?.data?.data) {
-				// Create all notes in parallel
-				await Promise.all(
-					Object.entries(response.data.data).map(
-						([noteKey, noteData]) =>
-							this.createOrUpdateNote(
-								noteKey,
-								noteData as NoteData
-							)
-					)
-				);
-			}
-			new Notice("Sync completed!");
 		} catch (error) {
 			new Notice(`Sync failed: ${error.message}`);
 		}
