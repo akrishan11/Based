@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS: BasedSettings = {
 	joinCode: "",
 	serverUrl: "https://based.shmul.dev/joinVault",
 	isAuthenticated: false,
-	lastSyncTimestamp: 0,
+	lastSyncTimestamp: Date.now(),
 };
 
 export default class BasedPlugin extends Plugin {
