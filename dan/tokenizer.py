@@ -73,7 +73,7 @@ def get_block_texts(blocks):
     # Extract block content as strings (heading + content) with proper markdown structure
     block_texts = []
     for block in blocks:
-        block_text = block['heading'] + "\n"
+        block_text = f"{'#' * block['level']} {block['heading']}\n"
         for item in block['content']:
             # Indent the content based on the indent level
             indent = ' ' * (item['indent_level'] * 2)  # 2 spaces per indentation level
@@ -119,9 +119,7 @@ def combine_topics_and_generate_markdown(file_paths):
     # Step 3: Combine topics from both files
     combined_markdown = ""
     for topic_idx in set(topics):  # Loop over all unique topics
-        combined_markdown += f"# Topic {topic_idx}\n"
-        
-        # Get the block content for the current topic
+        # Skip the topic number header (don't add it)
         topic_content = [block_texts[i] for i in range(len(block_texts)) if topics[i] == topic_idx]
         
         # Append the content for the current topic

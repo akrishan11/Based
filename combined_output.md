@@ -1,8 +1,7 @@
-# Topic 0
-Questions 
+### Questions 
 - #question What is the difference between GNU and Linux.
 
-Overview
+## Overview
 - An operating system is allowed to say "no" to a request from a user.
         - A variety of reasons that resource cannot be allocated
                 - Used by another program
@@ -20,21 +19,7 @@ Overview
                 - How can the programmer know what functionality is left to the OS?
                 - Only focus on the higher levels of programming; lower level is left to the experts.
 
-Virtual Memory
-- If we want to run multiple programs simultaneously, we will need to use virtual memory.
-        - One way is partitioning.
-                - Divide the region into pieces.
-                - Give a piece to each program.
-        - Von Neumann needs programs code & data to all be in memory in order to run them.
-        - All programs we want to run MUST be in RAM (Memory).
-        - In order to perform loads and stores.
-- Why do we need to the OS to be in RAM (memory) alongside the other programs?
-        - It itself is a program, thus it needs to be in RAM memory.
-- How do we manage this memory?
-        - Can give a piece of the cake to each process we wish to run as the operating system.
-        - Called partitioning, we share the memory with all processes.
-
-Issues with Sharing
+## Issues with Sharing
 - If we allow memory to be shared in partitioning.
         - Different processes can read/write to different chunks of memory.
         - These chunks of memory may belong to different processes.
@@ -73,8 +58,7 @@ Issues with Sharing
         - Example: The OS is pretending to be a computer that does not exist.
 
 
-# Topic 1
-As a programmer we program with OS abstractions. We think that we have:
+### As a programmer we program with OS abstractions. We think that we have:
 - Exclusive access the the CPU's time
 - Huge amounts of dedicated RAM to hold its code and data
 - Exclusive access to I/O devices
@@ -95,7 +79,7 @@ As a programmer we program with OS abstractions. We think that we have:
 - We want the operating system to have authority over the resources.
 - User space will need to access the system resources as well, this is done through system calls
 
-Abstraction
+## Abstraction
 - Not only makes programmers lives easier, but also automates tedious processes
         - Originally programmers were writing code that would damage or break the system.
 - OS handles the sharing of processor power between programs; programmers will never consider this.
@@ -108,6 +92,21 @@ Abstraction
         - OS may need to say no to a request to a program when it cannot sufficiently perform the operation.
         - Need to manage shared resources, not just of one program.
 
-Lecture 2 - Virtualization & Abstraction
+
+## Virtual Memory
+- If we want to run multiple programs simultaneously, we will need to use virtual memory.
+        - One way is partitioning.
+                - Divide the region into pieces.
+                - Give a piece to each program.
+        - Von Neumann needs programs code & data to all be in memory in order to run them.
+        - All programs we want to run MUST be in RAM (Memory).
+        - In order to perform loads and stores.
+- Why do we need to the OS to be in RAM (memory) alongside the other programs?
+        - It itself is a program, thus it needs to be in RAM memory.
+- How do we manage this memory?
+        - Can give a piece of the cake to each process we wish to run as the operating system.
+        - Called partitioning, we share the memory with all processes.
+
+# Lecture 2 - Virtualization & Abstraction
 
 
