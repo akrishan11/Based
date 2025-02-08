@@ -7,6 +7,7 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	TFile,
 } from "obsidian";
 
 interface NoteData {
@@ -151,12 +152,53 @@ location: ${noteData.location_tag}
 		}
 	}
 
+	async extractFrontmatter(file: TFile): Promise<any> {
+		const content = await this.app.vault.read(file);
+		const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
+		const match = content.match(frontmatterRegex);
+
+		if (match) {
+			const frontmatterStr = match[1];
+			const frontmatter: { [key: string]: string } = {};
+
+			frontmatterStr.split("\n").forEach((line) => {
+				const [key, ...values] = line.split(":");
+				if (key && values.length) {
+					frontmatter[key.trim()] = values.join(":").trim();
+				}
+			});
+
+			return frontmatter;
+		}
+
+		return null;
+	}
+
+	async getAllFrontmatter(): Promise<any[]> {
+		const files = this.app.vault.getMarkdownFiles();
+		const frontmatterArray = [];
+
+		for (const file of files) {
+			const frontmatter = await this.extractFrontmatter(file);
+			if (frontmatter) {
+				frontmatterArray.push({
+					filename: file.basename,
+					frontmatter: frontmatter,
+				});
+			}
+		}
+
+		return frontmatterArray;
+	}
+
 	async syncVault(mdContent?: string) {
 		if (!this.settings.isAuthenticated) {
 			new Notice("Please join the vault first!");
 			return;
 		}
+
 		try {
+			// First fetch updates from server
 			const responseData = await this.fetchVaultData();
 
 			if (responseData) {
@@ -169,8 +211,28 @@ location: ${noteData.location_tag}
 					);
 				}
 			}
+
+			// Then send local frontmatter data back to server
+			const frontmatterData = await this.getAllFrontmatter();
+
+			// Send the frontmatter data to the server
+			const submitUrl = this.settings.serverUrl.replace(
+				"/joinVault",
+				"/submitText"
+			);
+
+			await axios.post(submitUrl, frontmatterData, {
+				headers: {
+					"Content-Type": "application/text",
+				},
+			});
+
+			this.settings.lastSyncTimestamp = Date.now();
+			await this.saveSettings();
+			new Notice("Sync completed successfully!");
 		} catch (error) {
 			new Notice(`Sync failed: ${error.message}`);
+			console.error("Sync error:", error);
 		}
 	}
 
