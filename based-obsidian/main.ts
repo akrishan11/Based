@@ -1,7 +1,7 @@
+import axios from "axios";
 import {
 	App,
 	Editor,
-	MarkdownView,
 	Modal,
 	Notice,
 	Plugin,
@@ -9,92 +9,92 @@ import {
 	Setting,
 } from "obsidian";
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface BasedSettings {
+	joinCode: string;
+	serverUrl: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: "default",
+const DEFAULT_SETTINGS: BasedSettings = {
+	joinCode: "",
+	serverUrl: "https://based.shmul.dev/submitText",
 };
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class BasedPlugin extends Plugin {
+	settings: BasedSettings;
 
 	async onload() {
 		await this.loadSettings();
+		new Notice("BasedPlugin loaded");
 
-		// This creates an icon in the left ribbon.
+		// Add sync icon to the left ribbon
 		const ribbonIconEl = this.addRibbonIcon(
-			"dice",
-			"Sample Plugin",
+			"folder-sync",
+			"Sync Vault",
 			(evt: MouseEvent) => {
-				// Called when the user clicks the icon.
-				new Notice("This is a notice!");
+				new JoinCodeModal(this.app, this).open();
 			}
 		);
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass("my-plugin-ribbon-class");
+		ribbonIconEl.addClass("based-plugin-ribbon-class");
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText("Status Bar Text");
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: "open-sample-modal-simple",
-			name: "Open sample modal (simple)",
+			id: "sync-vault",
+			name: "Sync Vault",
 			callback: () => {
-				new SampleModal(this.app).open();
+				new JoinCodeModal(this.app, this).open();
 			},
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: "sample-editor-command",
-			name: "Sample editor command",
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection("Sample Editor Command");
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: "open-sample-modal-complex",
-			name: "Open sample modal (complex)",
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
+			editorCallback: (editor: Editor) => {
+				const mdContent = editor.getDoc().getValue();
+				this.syncVault(mdContent);
 			},
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, "click", (evt: MouseEvent) => {
-			console.log("click", evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log("setInterval"), 5 * 60 * 1000)
-		);
+		// Add settings tab
+		this.addSettingTab(new SyncSettingTab(this.app, this));
 	}
 
-	onunload() {}
+	async syncVault(mdContent: string) {
+		try {
+			// Here you would implement the actual sync logic
+			// This is a placeholder that shows a success message
+			// new Notice(`Starting sync with join code: ${joinCode}`);
+
+			axios.post(
+				"https://based.shmul.dev/submitText",
+				{
+					body: { mdContent },
+				},
+				{
+					headers: {
+						"Content-Type": "application/text",
+					},
+				}
+			);
+
+			// Simulated delay to represent sync process
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			new Notice("Sync completed successfully!");
+		} catch (error) {
+			new Notice("Sync failed! Please try again.");
+			console.error("Sync error:", error);
+		}
+	}
+
+	async joinVault(joinCode: string) {
+		try {
+			// Here you would implement the actual sync logic
+			// This is a placeholder that shows a success message
+			// new Notice(`Starting sync with join code: ${joinCode}`);
+
+			// Simulated delay to represent sync process
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			new Notice("Join completed successfully!");
+		} catch (error) {
+			new Notice("Sync failed! Please try again.");
+			console.error("Sync error:", error);
+		}
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -109,14 +109,52 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
+class JoinCodeModal extends Modal {
+	plugin: BasedPlugin;
+	joinCode: string;
+
+	constructor(app: App, plugin: BasedPlugin) {
 		super(app);
+		this.plugin = plugin;
 	}
 
 	onOpen() {
 		const { contentEl } = this;
-		contentEl.setText("Woah!");
+
+		contentEl.createEl("h3", { text: "Enter Join Code to Sync" });
+
+		const inputContainer = contentEl.createDiv();
+		const input = inputContainer.createEl("input", {
+			type: "text",
+			placeholder: "Enter your join code",
+		});
+		input.style.width = "100%";
+		input.style.marginBottom = "1rem";
+
+		const buttonContainer = contentEl.createDiv();
+		buttonContainer.style.display = "flex";
+		buttonContainer.style.justifyContent = "flex-end";
+		buttonContainer.style.gap = "0.25rem";
+
+		const cancelButton = buttonContainer.createEl("button", {
+			text: "Cancel",
+		});
+		cancelButton.addEventListener("click", () => {
+			this.close();
+		});
+
+		const syncButton = buttonContainer.createEl("button", { text: "Sync" });
+		syncButton.classList.add("mod-cta");
+		syncButton.addEventListener("click", async () => {
+			const code = input.value.trim();
+			if (code) {
+				await this.plugin.joinVault("12345");
+				this.onClose;
+				this.close();
+			} else {
+				new Notice("Please enter a join code");
+			}
+		});
 	}
 
 	onClose() {
@@ -125,28 +163,40 @@ class SampleModal extends Modal {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class SyncSettingTab extends PluginSettingTab {
+	plugin: BasedPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: BasedPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Setting #1")
-			.setDesc("It's a secret")
+			.setName("Server URL")
+			.setDesc("Enter the URL of your sync server")
 			.addText((text) =>
 				text
-					.setPlaceholder("Enter your secret")
-					.setValue(this.plugin.settings.mySetting)
+					.setPlaceholder("Enter server URL")
+					.setValue(this.plugin.settings.serverUrl)
 					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
+						this.plugin.settings.serverUrl = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Default Join Code")
+			.setDesc("Enter a default join code (optional)")
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter join code")
+					.setValue(this.plugin.settings.joinCode)
+					.onChange(async (value) => {
+						this.plugin.settings.joinCode = value;
 						await this.plugin.saveSettings();
 					})
 			);
