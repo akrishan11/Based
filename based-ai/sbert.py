@@ -19,7 +19,6 @@ def split_file_into_sentences(file_path):
     sentences = sent_tokenize(text)
     return sentences
 
-sentences = split_file_into_sentences(file_path)
 
 #for sentence in sentences:
 #    print(sentence)
@@ -49,7 +48,7 @@ def analyze_with_bertopic(sentences):
 
     return grouped
 
-topics_df = analyze_with_bertopic(sentences)
+
 
 def save_topics_to_markdown(df, filename="topics.md"):
     with open(filename, "w", encoding="utf-8") as f:
@@ -59,15 +58,17 @@ def save_topics_to_markdown(df, filename="topics.md"):
                 f.write(f"- {sentence}\n")  # Unordered list item
             f.write("\n")  # Add a blank line for spacing between topics
 
-save_topics_to_markdown(topics_df)
 
 
-# topic_labels = {topic_id: words[0][0] for topic_id, words in topic_model.get_topics().items()}
-# print(topic_labels)
-# print("Topic Information:")
-# print(topic_info)
-# print("\nSentences Categorized by Topics:")
-# print(sentence_topics.to_string())
+#call this method, groups sentences of file, groups them using BERT, and exports to md file
+
+def group_text_to_md(file_path):
+    sentences = split_file_into_sentences(file_path)
+    topics_df = analyze_with_bertopic(sentences)
+    save_topics_to_markdown(topics_df)
+
+
+
 
 
 
